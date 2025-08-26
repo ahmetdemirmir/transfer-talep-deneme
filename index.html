@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+<title>Demir Kırtasiye — Şube Transfer Talep (Kamera Destekli)</title>
+<style>
+body{font-family:Arial,sans-serif;background:#f5f7fa;text-align:center;padding:20px}
+h1{color:#2c3e50;display:inline-block;margin-left:10px}
+#header{display:flex;align-items:center;justify-content:center;gap:12px}
+#logo{height:56px;object-fit:contain}
+
+/* giriş alanları */
+#fileInput,#manualBarcode,#quickSearch{margin:10px 0;padding:14px;font-size:18px;border-radius:12px;width:96%;max-width:420px}
+
+/* kamera & kontroller */
+#cameraControls{margin:18px 0 10px;display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
+#cameraControls button,#cameraControls input[type=file]{font-size:16px;padding:11px 14px;margin:0;border-radius:12px;border:1.5px solid #ccc;min-width:120px}
+#scanBarcodeBtn{background:linear-gradient(90deg,#4CAF50,#77dd77);color:#fff;border:none}
+#cameraSwitchBtn{background:linear-gradient(90deg,#1976D2,#65b1fc);color:#fff;border:none}
+#torchBtn{background:linear-gradient(90deg,#ff9800,#ffc107);color:#fff;border:none;display:none}
+#refocusBtn{background:linear-gradient(90deg,#455a64,#78909c);color:#fff;border:none;display:none}
+#saveJsonBtn,#loadJsonBtn{background:linear-gradient(90deg,#0097A7,#00BCD4);color:#fff;border:none}
+#exportBtn{background:linear-gradient(90deg,#9c27b0,#ce93d8);color:#fff;border:none}
+#resetBtn{background:linear-gradient(90deg,#e53935,#e57373);color:#fff;border:none}
+
+#zoomWrap{display:none;align-items:center;gap:6px;border:1px solid #dcdcdc;border-radius:12px;padding:8px 10px;background:#fff}
+#camZoomRange{width:160px}
+#qr-reader{width:95vw;max-width:520px;margin:10px auto 20px;display:none;border-radius:18px;box-shadow:0 0 10px #bbb}
+
+/* ürün listesi */
+#productList{margin-top:20px;text-align:left}
+.item{display:flex;justify-content:space-between;padding:16px;margin:8px 0;border-bottom:1px solid #ddd;background:#3498db;color:#fff;font-size:18px;cursor:pointer;border-radius:10px}
+#searchResults{margin-top:8px}
+#searchResults .item{background:#1976D2;color:#fff;border-radius:7px;font-size:18px;cursor:pointer}
+#searchResults .item:hover{background:#1565C0}
+
+/* overlay/kart */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);justify-content:center;align-items:center;z-index:999}
+.card{background:#fff;color:#111;padding:26px;border-radius:18px;width:92vw;max-width:700px;text-align:left;position:relative}
+.card h2{margin:0 0 10px}
+.overlay-close{position:absolute;top:10px;right:12px;background:#7f8c8d;color:#fff;border:none;border-radius:50%;width:34px;height:34px;cursor:pointer;font-weight:bold;font-size:21px}
+
+/* stok tablosu */
+#stockTitle{margin:8px 0 6px}
+#stockTable{width:100%;border-collapse:separate;border-spacing:0;margin-top:6px}
+#stockTable thead th{font-weight:700;color:#334155;border-bottom:2px solid #e5e7eb;padding:10px;text-align:left}
+#stockTable tbody tr{cursor:pointer;box-shadow:inset 0 -1px #e5e7eb,inset 0 1px #e5e7eb}
+#stockTable td{padding:14px 12px;text-align:left}
+#stockTable td.branch-name{font-weight:800;font-size:17px}
+#stockTable td.branch-qty{font-weight:800;font-size:20px}
+#stockTable tbody tr:hover{filter:brightness(.98)}
+
+/* kurumsal pastel şeritler */
+.branch-MERKEZ{background:#eaf4ff}
+.branch-ATAEVLER{background:#f3e9ff}
+.branch-TOPKAPI{background:#fff2e5}
+.branch-FETHIYE{background:#eaf8ee}
+.branch-FETHIYE_DEPO{background:#e8fbff}
+
+/* form alanları */
+#transferForm{display:grid;grid-template-columns:1fr;gap:12px;align-items:center;margin-top:14px}
+#transferForm label{font-size:13px;color:#475569;display:block;margin-bottom:4px}
+#transferForm select{padding:10px 12px;border-radius:10px;border:1px solid #dcdcdc;font-size:16px;width:100%}
+
+#transferActions{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+.btn-primary{background:linear-gradient(90deg,#43A047,#A5D6A7);color:#fff;border:none;padding:12px 18px;border-radius:12px;cursor:pointer}
+.btn-secondary{background:linear-gradient(90deg,#607d8b,#a7b3c1);color:#fff;border:none;padding:12px 18px;border-radius:12px;cursor:pointer}
+
+/* 2. popup — büyütülmüş yön + 2× butonlar */
+#qtyOverlay .card{max-width:640px}
+#qtyTitle{margin-bottom:10px;font-size:26px}
+.dir-top{display:flex;align-items:center;justify-content:center;gap:10px;margin:8px 0 14px}
+.dir-top .supply{color:#0f172a;font-weight:900;font-size:24px}
+.dir-top .demand{color:#dc2626;font-weight:900;font-size:24px}
+.dir-top .arrow-badge{display:inline-flex;align-items:center;gap:8px;padding:8px 16px;border-radius:9999px;background:#0ea5e9;color:#fff;font-weight:900;font-size:20px;box-shadow:0 2px 0 #0284c7}
+
+#quickQtyGrid{display:flex;flex-wrap:wrap;gap:12px;margin-top:0}
+.quick-btn{flex:1 0 45%;min-width:140px;padding:18px;border:none;border-radius:14px;background:#0ea5e9;color:#fff;font-size:28px;font-weight:800;cursor:pointer}
+.quick-btn.alt{background:#64748b}
+.quick-btn.active{outline:4px solid #0f766e}
+.quick-btn[disabled]{opacity:.35;cursor:not-allowed}
+
+#manualQtyWrap{display:flex;gap:10px;margin-top:12px}
+#manualQty{flex:1;padding:14px 14px;border:1px solid #dcdcdc;border-radius:12px;font-size:18px}
+#saveQty{background:linear-gradient(90deg,#43A047,#A5D6A7);color:#fff;border:none;padding:14px 18px;border-radius:12px;cursor:pointer;font-size:18px}
+
+/* sepet/inline liste */
+#cartBar{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:10px}
+#openCartBtn{background:linear-gradient(90deg,#8e24aa,#ba68c8);color:#fff;border:none;padding:12px 18px;border-radius:12px;cursor:pointer}
+#cartCount{font-weight:bold}
+#cartInline{max-width:900px;margin:14px auto;text-align:left}
+#cartInline table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden}
+#cartInline th,#cartInline td{border-bottom:1px solid #eee;padding:10px 12px}
+#cartInline th{background:#f1f5f9;text-transform:uppercase;font-size:12px;letter-spacing:.02em}
+
+/* Sepet overlay scroll */
+#cartOverlay .card{max-height:88vh;overflow:hidden}
+#cartTableWrap{max-height:60vh;overflow-y:auto}
+
+/* mobil düzeltmeler */
+@media (max-width:600px){
+  #cameraControls button{min-width:44vw}
+}
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode"></script>
+</head>
+<body>
+  <div id="header">
+    <img id="logo" src="logo.png" alt="Demir Kırtasiye Logosu" />
+    <h1>Demir Kırtasiye — Şube Transfer Talep</h1>
+  </div>
+
+  <input type="file" id="fileInput" accept=".xlsx,.csv"><br>
+
+  <!-- Hızlı Arama: ARTIK MOBİLDE DE GÖRÜNÜR -->
+  <input type="text" id="quickSearch" placeholder="Hızlı Arama (son 6 / isim) — Mobil & PC" autocomplete="off">
+  <!-- Manuel barkod alanını mobilde gizli tutuyoruz -->
+  <input type="text" id="manualBarcode" placeholder="Barkodu okutun veya yazıp Enter" autocomplete="off">
+
+  <div id="cameraControls">
+    <button id="scanBarcodeBtn">📷 Kamera ile Okut</button>
+    <button id="cameraSwitchBtn" style="display:none;">🔄 Kamerayı Değiştir</button>
+    <div id="zoomWrap">
+      <label for="camZoomRange">Zoom</label>
+      <input id="camZoomRange" type="range" min="1" max="1" step="0.1" value="1">
+    </div>
+    <button id="torchBtn">🔦 Işık</button>
+    <button id="refocusBtn">🎯 Refocus</button>
+
+    <button id="saveJsonBtn">💾 Veriyi Kaydet (JSON)</button>
+    <input type="file" id="loadJsonInput" style="display:none" accept=".json"/>
+    <button id="loadJsonBtn">📂 Veriyi Yükle (JSON)</button>
+    <button id="exportBtn">📥 Transferi Excel’e Aktar</button>
+    <button id="resetBtn">🔄 Sıfırla</button>
+  </div>
+
+  <div id="qr-reader"></div>
+
+  <!-- Sepet + Inline Liste -->
+  <div id="cartBar"><button id="openCartBtn">🛒 Transfer Sepeti <span id="cartCount">(0)</span></button></div>
+  <div id="cartInline"></div>
+
+  <div id="productList"></div><div id="searchResults"></div>
+
+  <!-- TRANSFER POP-UP (1) -->
+  <div id="transferOverlay" class="overlay">
+    <div id="transferContent" class="card">
+      <button class="overlay-close" id="closeTransferBtn">×</button>
+      <h2 id="trName">Ürün Adı</h2>
+      <div id="trBarcode" style="color:#475569;margin-bottom:6px;">Barkod: -</div>
+
+      <h3 id="stockTitle">Şube Stok Durumları</h3>
+      <table id="stockTable">
+        <thead><tr><th>Şube</th><th>Stok</th></tr></thead>
+        <tbody id="stockBody"></tbody>
+      </table>
+
+      <div id="transferForm">
+        <div>
+          <label for="sourceBranch">Talep Eden Şube</label>
+          <select id="sourceBranch"></select>
+        </div>
+      </div>
+
+      <div id="transferActions">
+        <button class="btn-secondary" id="btnCloseNoSave">Kapat</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- HIZLI ADET POP-UP (2) -->
+  <div id="qtyOverlay" class="overlay">
+    <div class="card">
+      <button class="overlay-close" id="closeQtyBtn">×</button>
+      <h2 id="qtyTitle">Adet Seç</h2>
+
+      <!-- YÖN ŞERİDİ (üstte ve 2× büyük) -->
+      <div class="dir-top" id="dirInfo"></div>
+
+      <div id="quickQtyGrid">
+        <button class="quick-btn" data-q="1">1</button>
+        <button class="quick-btn" data-q="2">2</button>
+        <button class="quick-btn" data-q="3">3</button>
+        <button class="quick-btn" data-q="6">6</button>
+        <button class="quick-btn" data-q="12">12</button>
+        <button class="quick-btn alt" id="btnPlusManual">+</button>
+      </div>
+
+      <div id="manualQtyWrap">
+        <input type="number" id="manualQty" min="1" placeholder="Manuel adet…">
+        <button id="saveQty">Talebi Kaydet & Kameraya Dön</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SEPET POP-UP -->
+  <div id="cartOverlay" class="overlay">
+    <div id="cartContent" class="card">
+      <button class="overlay-close" id="closeCartBtn">×</button>
+      <h2>Transfer Sepeti</h2>
+      <div id="cartTableWrap"></div>
+      <div class="actions">
+        <button class="btn-secondary" id="syncBtn">☁️ Senkronize Et</button>
+        <button class="btn-primary" id="btnExportCartXlsx">📥 Excel’e Aktar</button>
+        <button class="btn-secondary" id="btnClearCart">🧹 Sepeti Temizle</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- HATA POP-UP -->
+  <div id="errorOverlay" class="overlay">
+    <div class="card" style="background:#e74c3c;color:#fff;">
+      <button class="overlay-close" id="closeErrorBtn">×</button>
+      <h2>❌ Hata</h2>
+      <p id="errorText">Bu işlem yapılamaz.</p>
+    </div>
+  </div>
+
+<script>
+/* ====== Durum ====== */
+let products=[]; 
+let qrScanner=null, qrScannerActive=false, currentFacingMode="environment";
+let currentTrack=null, torchOn=false;
+const isMobile=/Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent);
+const isiOS=/iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+const STORAGE_KEY_PRODUCTS="demir_transfer_products";
+const STORAGE_KEY_CART="demir_transfer_cart";
+const STORAGE_KEY_LAST_FROM="demir_transfer_last_from";
+
+let transferCart=[];
+let currentProduct=null;
+let pendingTargetBranch=null;     // tedarik şubesi (stok veren)
+let supplyMaxQty=0;               // tedarik şubesindeki stok
+let selectedQty=null;
+
+/* ====== Elemanlar ====== */
+const fileInput=document.getElementById('fileInput');
+const manualBarcode=document.getElementById('manualBarcode');
+const quickSearch=document.getElementById('quickSearch');
+const qrReaderDiv=document.getElementById('qr-reader');
+const scanBarcodeBtn=document.getElementById('scanBarcodeBtn');
+const cameraSwitchBtn=document.getElementById('cameraSwitchBtn');
+const torchBtn=document.getElementById('torchBtn');
+const refocusBtn=document.getElementById('refocusBtn');
+const zoomWrap=document.getElementById('zoomWrap');
+const camZoomRange=document.getElementById('camZoomRange');
+
+const productList=document.getElementById('productList');
+const searchResults=document.getElementById('searchResults');
+
+const transferOverlay=document.getElementById('transferOverlay');
+const transferContent=document.getElementById('transferContent');
+const closeTransferBtn=document.getElementById('closeTransferBtn');
+const btnCloseNoSave=document.getElementById('btnCloseNoSave');
+const trName=document.getElementById('trName');
+const trBarcode=document.getElementById('trBarcode');
+const stockBody=document.getElementById('stockBody');
+const sourceBranchSel=document.getElementById('sourceBranch');
+
+const qtyOverlay=document.getElementById('qtyOverlay');
+const closeQtyBtn=document.getElementById('closeQtyBtn');
+const qtyTitle=document.getElementById('qtyTitle');
+const dirInfo=document.getElementById('dirInfo');
+const manualQty=document.getElementById('manualQty');
+const saveQty=document.getElementById('saveQty');
+const quickQtyGrid=document.getElementById('quickQtyGrid');
+
+const openCartBtn=document.getElementById('openCartBtn');
+const cartCount=document.getElementById('cartCount');
+const cartInline=document.getElementById('cartInline');
+const cartOverlay=document.getElementById('cartOverlay');
+const closeCartBtn=document.getElementById('closeCartBtn');
+const cartTableWrap=document.getElementById('cartTableWrap');
+
+const exportBtn=document.getElementById('exportBtn');
+const btnExportCartXlsx=document.getElementById('btnExportCartXlsx');
+const btnClearCart=document.getElementById('btnClearCart');
+
+const errorOverlay=document.getElementById('errorOverlay');
+const closeErrorBtn=document.getElementById('closeErrorBtn');
+const errorText=document.getElementById('errorText');
+
+/* ====== Genel yardımcılar ====== */
+function closeAllPopups(){
+  transferOverlay.style.display='none';
+  qtyOverlay.style.display='none';
+  errorOverlay.style.display='none';
+  cartOverlay.style.display='none';
+}
+function persistAll(){ localStorage.setItem(STORAGE_KEY_PRODUCTS,JSON.stringify(products)); localStorage.setItem(STORAGE_KEY_CART,JSON.stringify(transferCart)); }
+function renderCartCount(){ cartCount.textContent=`(${transferCart.length})`; }
+function renderCartInline(){
+  if(!transferCart.length){ cartInline.innerHTML=""; return; }
+  const rows=transferCart.map((r,i)=>`<tr>
+    <td>${i+1}</td><td>${r["Talep Yönü"]}</td><td>${r["Barkod"]}</td><td>${r["Ürün Adı"]}</td>
+    <td style="text-align:right">${r["Talep Adedi"]}</td>
+  </tr>`).join('');
+  cartInline.innerHTML=`<h3 style="margin:8px 0 6px;text-align:left">Talep Listesi</h3>
+  <table><thead><tr><th>#</th><th>Taşıma Yönü</th><th>Barkod</th><th>Ürün</th><th>Adet</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+function showError(msg){ errorText.textContent=msg||"Hata"; errorOverlay.style.display='flex'; }
+function resumeAfterClose(){ if(isMobile){ if(qrScannerActive){ startQrScanner(); } } else { try{ manualBarcode.focus(); }catch{} }}
+
+/* ====== Kamera ====== */
+scanBarcodeBtn.addEventListener('click',()=>{ 
+  if(!qrScannerActive){ qrReaderDiv.style.display='block'; startQrScanner(); scanBarcodeBtn.textContent='Kamerayı Kapat'; }
+  else { stopQrScanner(); qrReaderDiv.style.display='none'; scanBarcodeBtn.textContent='📷 Kamera ile Okut'; }
+});
+cameraSwitchBtn.addEventListener('click',()=>{ currentFacingMode=(currentFacingMode==="environment")?"user":"environment"; if(qrScannerActive){ stopQrScanner(true); startQrScanner(); }});
+
+torchBtn.addEventListener('click',async()=>{
+  if(!currentTrack) return;
+  try{
+    torchOn=!torchOn;
+    await currentTrack.applyConstraints({advanced:[{torch:torchOn}]});
+    torchBtn.textContent = torchOn ? "🔦 Işık (Açık)" : "🔦 Işık";
+  }catch{ torchOn=false; }
+});
+refocusBtn.addEventListener('click',async()=>{
+  if(!currentTrack) return;
+  try{
+    await currentTrack.applyConstraints({advanced:[{focusMode:"continuous"}]});
+    // küçük bir zoom tetiklemesi iOS'ta yeniden odaklamayı uyandırır
+    if(camZoomRange && !isNaN(parseFloat(camZoomRange.value))){
+      const z=parseFloat(camZoomRange.value);
+      await currentTrack.applyConstraints({advanced:[{zoom:Math.min((z+0.01),(parseFloat(camZoomRange.max)||z))}]});
+      await currentTrack.applyConstraints({advanced:[{zoom:z}]});
+    }
+  }catch{}
+});
+camZoomRange.addEventListener('input',async()=>{
+  if(!currentTrack) return;
+  try{
+    await currentTrack.applyConstraints({advanced:[{zoom:parseFloat(camZoomRange.value)}]});
+  }catch{}
+});
+
+function dynamicQrbox(width, height){
+  const edge=Math.min(width, height);
+  const w=Math.floor(edge*0.85);
+  const h=Math.floor(w*0.7); // 1D barkodlar için daha yatay pencere
+  return { width:w, height:h };
+}
+
+function startQrScanner(){
+  qrScannerActive=true;
+  qrScanner=new Html5Qrcode("qr-reader");
+  const config={ fps:15, qrbox: dynamicQrbox, aspectRatio: 1.777, disableFlip: true };
+  qrScanner.start({facingMode:currentFacingMode}, config, code=>handleLookup(code,true), err=>{}).then(()=>{
+    setTimeout(captureTrackAndSetupTuning,150);
+    cameraSwitchBtn.style.display='inline-block';
+  }).catch(()=>{});
+}
+
+function stopQrScanner(keepVisible=false){
+  if(!qrScanner) return;
+  qrScanner.stop().then(()=>{ 
+    qrScannerActive=false; 
+    currentTrack=null; 
+    if(!keepVisible){ qrReaderDiv.style.display='none'; }
+  }).catch(()=>{});
+}
+
+function captureTrackAndSetupTuning(){
+  const video=document.querySelector('#qr-reader video'); if(!video||!video.srcObject) return;
+  const tracks=video.srcObject.getVideoTracks(); if(!tracks||!tracks[0]) return;
+  currentTrack=tracks[0];
+  const caps=currentTrack.getCapabilities ? currentTrack.getCapabilities() : {};
+  // Zoom
+  if(caps.zoom!==undefined){
+    zoomWrap.style.display='inline-flex';
+    camZoomRange.min=caps.zoom.min ?? 1;
+    camZoomRange.max=caps.zoom.max ?? 1;
+    camZoomRange.step=caps.zoom.step ?? 0.1;
+    camZoomRange.value=Math.min(Math.max(1, caps.zoom.min ?? 1), caps.zoom.max ?? 1);
+  } else {
+    zoomWrap.style.display='none';
+  }
+  // Torch (özellikle iOS)
+  if(caps.torch!==undefined){ torchBtn.style.display='inline-block'; } else { torchBtn.style.display='none'; }
+  // Refocus düğmesi iOS için de görünür
+  refocusBtn.style.display='inline-block';
+
+  // Sürekli odak denemesi (destekliyorsa)
+  try{ currentTrack.applyConstraints({advanced:[{focusMode:"continuous"}]}); }catch{}
+}
+
+/* ====== Excel/JSON ====== */
+document.getElementById('saveJsonBtn').addEventListener('click',()=>{
+  const dataStr=JSON.stringify({products,transferCart},null,2);
+  const blob=new Blob([dataStr],{type:"application/json"}); const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download='transfer_durum.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+});
+document.getElementById('loadJsonBtn').addEventListener('click',()=>document.getElementById('loadJsonInput').click());
+document.getElementById('loadJsonInput').addEventListener('change',evt=>{
+  const file=evt.target.files[0]; if(!file) return;
+  const reader=new FileReader(); reader.onload=e=>{ try{ const obj=JSON.parse(e.target.result); products=obj.products||[]; transferCart=obj.transferCart||[]; persistAll(); renderProducts(); renderCartCount(); renderCartInline(); alert("JSON yüklendi."); }catch{ alert("Geçersiz JSON."); } };
+  reader.readAsText(file);
+});
+fileInput.addEventListener('change',e=>{
+  const file=e.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    const data=new Uint8Array(ev.target.result);
+    const wb=XLSX.read(data,{type:'array'}); const ws=wb.Sheets[wb.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(ws,{defval:""});
+    products=rows.map(r=>{const out={...r}; const raw=out.Barkodu; out.Barkodu=(raw==null)?"":String(typeof raw==='number'?Math.trunc(raw):raw).trim(); return out;});
+    persistAll(); renderProducts();
+  };
+  reader.readAsArrayBuffer(file);
+});
+
+/* ====== Arama (PC & Mobil) ====== */
+/* Not: Mobilde artık hızlı arama GÖRÜNÜR. Sadece manuel barkod alanını gizliyoruz. */
+if(isMobile){ manualBarcode.style.display='none'; }
+manualBarcode.addEventListener('keypress',e=>{ if(e.key==='Enter'){ const code=manualBarcode.value.trim(); manualBarcode.value=''; if(code) handleLookup(code,false); }});
+quickSearch.addEventListener('input',()=>{
+  const v=quickSearch.value.trim().toLowerCase(); if(!v||!products.length){searchResults.innerHTML='';return;}
+  const results=products.filter(p=>{const b=String(p.Barkodu||'').toLowerCase(); const n=String(p["Stok Adı"]||'').toLowerCase(); return b.includes(v)||b.slice(-6).includes(v)||n.includes(v);});
+  if(results.length===1 && v.length>2){ openTransferPopup(results[0]); searchResults.innerHTML=''; return; }
+  searchResults.innerHTML=results.slice(0,8).map(p=>`<div class="item" onclick="window._openByIdx(${products.indexOf(p)})"><b>${p.Barkodu}</b> - ${p["Stok Adı"]}</div>`).join('');
+});
+window._openByIdx=idx=>{const p=products[idx]; if(p){ openTransferPopup(p); quickSearch.value=''; searchResults.innerHTML=''; }};
+
+/* ====== Lookup ====== */
+function handleLookup(val,fromCamera){
+  const s=String(val).trim();
+  let found=products.find(p=>p.Barkodu===s || String(p.Barkodu).slice(-6)===s);
+  if(!found){ found=products.find(p=> String(p["Stok Adı"]).toLowerCase().includes(s.toLowerCase())); }
+  if(!found){ showError("Bu ürün listede yok."); if(fromCamera&&qrScannerActive){ stopQrScanner(true);} return; }
+  openTransferPopup(found);
+}
+
+/* ====== Transfer Pop-up (1) ====== */
+function openTransferPopup(p){
+  currentProduct=p;
+  trName.textContent=String(p["Stok Adı"]||"Ürün");
+  trBarcode.textContent="Barkod: "+(p.Barkodu||"-");
+
+  const stocks=getBranchStocks(p);
+  stockBody.innerHTML = stocks.map(s=>`<tr class="${classForBranch(s.branch)}" data-branch="${s.branch}" data-qty="${s.qty}">
+      <td class="branch-name">${displayNameForBranch(s.branch)}</td>
+      <td class="branch-qty">${s.qty||0}</td>
+    </tr>`).join('');
+
+  // Talep Eden şube seçenekleri
+  sourceBranchSel.innerHTML='';
+  stocks.forEach(s=>{ const o=document.createElement('option'); o.value=s.branch; o.textContent=displayNameForBranch(s.branch); sourceBranchSel.appendChild(o); });
+  const lastFrom=localStorage.getItem(STORAGE_KEY_LAST_FROM);
+  if(lastFrom && [...sourceBranchSel.options].some(o=>o.value===lastFrom)) sourceBranchSel.value=lastFrom;
+
+  // Satır tıklama → kontroller ve 2. popup
+  stockBody.querySelectorAll('tr').forEach(tr=>{
+    tr.addEventListener('click',()=>{
+      const from=sourceBranchSel.value;
+      const target=tr.getAttribute('data-branch');
+      if(from===target){ showError("Aynı şubeden aynı şubeye talep yapılamaz."); return; }
+      const qtyNum=parseFloat(String(tr.getAttribute('data-qty')).replace(',','.'))||0;
+      if(qtyNum<=0){ showError("Stok 0 — bu şubeden talep edilemez."); return; }
+      pendingTargetBranch=target; supplyMaxQty=qtyNum;
+      openQtyPopup(displayNameForBranch(target), supplyMaxQty);
+    });
+  });
+
+  transferOverlay.style.display='flex';
+}
+
+/* ====== Hızlı Adet Pop-up (2) ====== */
+function openQtyPopup(targetLabel, maxQty){
+  const fromLbl=displayNameForBranch(sourceBranchSel.value);
+  dirInfo.innerHTML=`<span class="supply">${targetLabel}</span><span class="arrow-badge">🚚 ➜</span><span class="demand">${fromLbl}</span>`;
+  selectedQty=null; manualQty.value=''; manualQty.max=String(maxQty); manualQty.placeholder=`Manuel adet… (max ${maxQty})`;
+  // hızlı butonlar — stok üstünü kilitle
+  [...quickQtyGrid.querySelectorAll('.quick-btn')].forEach(btn=>{
+    const q=btn.getAttribute('data-q');
+    btn.classList.remove('active');
+    if(q){ btn.disabled=parseInt(q,10)>maxQty; } else { btn.disabled=false; }
+  });
+  qtyOverlay.style.display='flex';
+}
+/* hızlı buton seçimi */
+quickQtyGrid.addEventListener('click',e=>{
+  const btn=e.target.closest('.quick-btn'); if(!btn||btn.disabled) return;
+  const q=btn.getAttribute('data-q');
+  [...quickQtyGrid.querySelectorAll('.quick-btn')].forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  if(q){ selectedQty=parseInt(q,10); manualQty.value=selectedQty; } else { manualQty.focus(); }
+});
+
+/* ====== Kayıt & sonrası ====== */
+saveQty.addEventListener('click',(e)=>{
+  e.preventDefault(); // her ihtimale karşı
+  let q = (selectedQty!=null)?selectedQty:parseInt(manualQty.value||'0',10);
+  if(isNaN(q)||q<1){ showError("Geçerli bir adet girin."); return; }
+  if(q>Number(supplyMaxQty)){ showError(`Maksimum ${supplyMaxQty} adet talep edebilirsiniz.`); return; }
+  try{
+    finalizeAdd(q);
+  } finally {
+    closeAllPopups();     // Kaydet anında kesin kapat
+    resumeAfterClose();   // kameraya/barkoda dönüş
+  }
+});
+manualQty.addEventListener('keydown',(e)=>{ if(e.key==='Enter'){ e.preventDefault(); saveQty.click(); } });
+
+function finalizeAdd(qty){
+  if(!currentProduct || !pendingTargetBranch) return;
+  const from=sourceBranchSel.value;
+  localStorage.setItem(STORAGE_KEY_LAST_FROM,from);
+
+  transferCart.push({
+    "Talep Eden Şube":displayNameForBranch(from),
+    "Talep Edilen Şube":displayNameForBranch(pendingTargetBranch),
+    "Talep Yönü":`${displayNameForBranch(pendingTargetBranch)} ➜ ${displayNameForBranch(from)}`,
+    "Barkod":String(currentProduct.Barkodu||''),
+    "Ürün Adı":String(currentProduct["Stok Adı"]||''),
+    "Talep Adedi":qty
+  });
+  persistAll(); renderCartCount(); renderCartInline();
+  // === Step-3: Satırı Apps Script Web App'e gönder (başarısızsa kuyruğa al) ===
+  try{
+    const payload = [{
+      "Talep Yönü": `${displayNameForBranch(pendingTargetBranch)} ➜ ${displayNameForBranch(from)}`,
+      "Barkod": String(currentProduct.Barkodu||''),
+      "Ürün Adı": String(currentProduct["Stok Adı"]||''),
+      "Talep Adedi": qty,
+      "Talep Eden Şube": displayNameForBranch(from),
+      "Talep Edilen Şube": displayNameForBranch(pendingTargetBranch),
+      "Device": navigator.userAgent
+    }];
+    (async ()=>{
+      try{
+        const resp = await fetch(APPEND_ENDPOINT, {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({secret: APP_SECRET, rows: payload})
+        });
+        const j = await resp.json();
+        if(!(j && j.ok)) throw new Error('send-failed');
+      }catch(e){
+        const q = loadQueue(); q.push(...payload); saveQueue(q);
+      }
+    })();
+  }catch(e){ console.warn('Gönderim kuyruğa alındı', e); }
+}
+
+/* ====== Sepet ====== */
+openCartBtn.addEventListener('click',()=>openCart());
+closeCartBtn.addEventListener('click',()=>{ cartOverlay.style.display='none'; });
+function openCart(){ cartTableWrap.innerHTML=buildCartTableHTML(); cartOverlay.style.display='flex'; }
+function buildCartTableHTML(){
+  if(!transferCart.length) return "<p>Sepet boş.</p>";
+  const rows=transferCart.map((r,i)=>`<tr>
+    <td>${i+1}</td><td>${r["Talep Yönü"]}</td><td>${r["Barkod"]}</td><td>${r["Ürün Adı"]}</td>
+    <td style="text-align:right">${r["Talep Adedi"]}</td>
+    <td><button data-idx="${i}" class="btn-secondary btn-del">Sil</button></td>
+  </tr>`).join('');
+  return `<table style="width:100%;border-collapse:collapse">
+    <thead><tr><th>#</th><th>Taşıma Yönü</th><th>Barkod</th><th>Ürün</th><th>Adet</th><th></th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+cartTableWrap.addEventListener('click',e=>{
+  const btn=e.target.closest('.btn-del'); if(!btn) return;
+  const idx=parseInt(btn.getAttribute('data-idx'),10);
+  if(!isNaN(idx)){ transferCart.splice(idx,1); persistAll(); cartTableWrap.innerHTML=buildCartTableHTML(); renderCartCount(); renderCartInline(); }
+});
+btnExportCartXlsx.addEventListener('click',exportCartXlsx);
+exportBtn.addEventListener('click',exportCartXlsx);
+function exportCartXlsx(){
+  if(!transferCart.length){ alert("Sepet boş."); return; }
+  const ws=XLSX.utils.json_to_sheet(transferCart);
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"Transfer Talepleri");
+  XLSX.writeFile(wb,"transfer_talepleri.xlsx");
+}
+btnClearCart.addEventListener('click',()=>{ 
+  if(!transferCart.length) return;
+  if(confirm("Sepeti temizle?")){
+    transferCart=[]; persistAll(); 
+    renderCartCount(); renderCartInline();
+    cartTableWrap.innerHTML=buildCartTableHTML(); // overlay açıksa da anında boşalt
+  }
+});
+
+/* ====== Overlay kapatma: arka plan ve ESC ====== */
+[transferOverlay, qtyOverlay, errorOverlay, cartOverlay].forEach(ov=>{
+  ov.addEventListener('click',e=>{ if(e.target===ov) closeAllPopups(); });
+});
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeAllPopups(); });
+closeTransferBtn.addEventListener('click',closeAllPopups);
+btnCloseNoSave.addEventListener('click',closeAllPopups);
+closeQtyBtn.addEventListener('click',closeAllPopups);
+closeErrorBtn.addEventListener('click',()=>errorOverlay.style.display='none');
+
+/* ====== Util ====== */
+const BRANCH_COLS=["MERKEZ","ATAEVLER","TOPKAPI","FETHIYE","FETHIYE DEPO"];
+function classForBranch(k){ return 'branch-'+String(k).trim().toUpperCase().replaceAll(' ','_');}
+function displayNameForBranch(k){
+  const K=String(k).trim().toUpperCase();
+  if(K==="MERKEZ") return "Merkez";
+  if(K==="ATAEVLER") return "Ataevler";
+  if(K==="TOPKAPI") return "Topkapı";
+  if(K==="FETHIYE") return "Fethiye Şube";
+  if(K==="FETHIYE DEPO") return "Fethiye Depo";
+  return k;
+}
+function getBranchStocks(p){
+  const out=[]; Object.keys(p).forEach(k=>{ if(BRANCH_COLS.includes(String(k).trim().toUpperCase())){ out.push({branch:k,qty:(p[k]===''||p[k]==null)?0:p[k]}); }});
+  return out;
+}
+
+/* ====== Init ====== */
+(function init(){
+  try{ const p=JSON.parse(localStorage.getItem(STORAGE_KEY_PRODUCTS)||"[]"); const c=JSON.parse(localStorage.getItem(STORAGE_KEY_CART)||"[]"); products=Array.isArray(p)?p:[]; transferCart=Array.isArray(c)?c:[]; }catch{}
+  renderProducts(); renderCartCount(); renderCartInline();
+})();
+function renderProducts(list=null){
+  const data=list||products; productList.innerHTML='';
+  data.forEach(p=>{
+    const barkod=String(p.Barkodu||'').trim(); const name=String(p["Stok Adı"]||'').trim();
+    const div=document.createElement('div'); div.className='item'; 
+    div.innerHTML=`<span><b>${barkod||'-'}</b> - ${name||''}</span><span></span>`;
+    div.addEventListener('click',()=>openTransferPopup(p));
+    productList.appendChild(div);
+  });
+}
+
+/* ====== Otomatik Kaydetme & Güvenli Kapatma ====== */
+const AUTO_SAVE_MS = 5000; // 5 sn'de bir snapshot
+setInterval(()=>{ try{ persistAll(); }catch(e){} }, AUTO_SAVE_MS);
+
+// Sekme arka plana düştüğünde veya sayfa kapanırken de kaydet
+document.addEventListener('visibilitychange', ()=>{ if(document.hidden){ try{ persistAll(); }catch(e){} } });
+window.addEventListener('pagehide', ()=>{ try{ persistAll(); }catch(e){} });
+
+// "Kaydetmeden kapatıyorsunuz" uyarısı
+window.addEventListener('beforeunload', (e)=>{
+  try{ persistAll(); }catch(e){}
+  // Sepette veri varsa veya ürünler yüklenmişse emin misiniz uyarısı çıkar
+  if((transferCart && transferCart.length>0) || (products && products.length>0)){
+    e.preventDefault();
+    e.returnValue = 'Kaydetmeden kapatıyorsunuz, emin misiniz?'; // bazı tarayıcılar kendi mesajını gösterir
+  }
+});
+
+// "Sıfırla" butonu: tüm localStorage izlerini temizle
+resetBtn.addEventListener('click', ()=>{
+  if(confirm('Tüm verileri sıfırlayıp tarayıcı önbelleğini temizleyeyim mi?')){
+    products = [];
+    transferCart = [];
+    try{
+      localStorage.removeItem(STORAGE_KEY_PRODUCTS);
+      localStorage.removeItem(STORAGE_KEY_CART);
+      localStorage.removeItem(STORAGE_KEY_LAST_FROM);
+    }catch(e){}
+    renderProducts();
+    renderCartCount();
+    renderCartInline();
+    alert('Tüm veriler sıfırlandı.');
+  }
+});
+
+</script>
+</body>
+</html>
+
+<script>
+  document.getElementById('syncBtn')?.addEventListener('click', flushQueue);
+</script>
