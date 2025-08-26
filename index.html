@@ -672,3 +672,65 @@ resetBtn.addEventListener('click', ()=>{
 <script>
   document.getElementById('syncBtn')?.addEventListener('click', flushQueue);
 </script>
+
+<script>
+/* ====== Sheets'e Yazma (Apps Script Web App) — Reinjected ====== */
+const APPEND_ENDPOINT = 'https://script.google.com/macros/s/AKfycbwFB89R96_qJ6Zeb3TTL3KmR_aE-o4XObyPEwXunPAZ47G8HoTzC0gu6fDOfKQhmQNb/exec';
+const APP_SECRET      = 'demirataevler1620';
+
+const STORAGE_KEY_UPLOAD_QUEUE = 'demir_transfer_upload_queue';
+function loadQueue(){ try{return JSON.parse(localStorage.getItem(STORAGE_KEY_UPLOAD_QUEUE)||'[]');}catch{return [];} }
+function saveQueue(q){ localStorage.setItem(STORAGE_KEY_UPLOAD_QUEUE, JSON.stringify(q)); }
+async function flushQueue(){
+  const q = loadQueue();
+  if(!q.length) return;
+  try{
+    const resp = await fetch(APPEND_ENDPOINT, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({secret: APP_SECRET, rows: q})
+    });
+    const j = await resp.json();
+    if(j && j.ok){
+      saveQueue([]);
+      console.log('Sheets senkron:', j.inserted);
+    } else {
+      console.warn('Sheets senkron başarısız:', j);
+    }
+  }catch(e){
+    console.warn('Sheets senkron hatası:', e);
+  }
+}
+setInterval(flushQueue, 15000);
+window.addEventListener('online', flushQueue);
+
+/* ====== Sheets’ten Yükle (Sabit CSV) — Reinjected ====== */
+const SHEETS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQMkBejpCxER9Mq_QKxmPxkDToCkaWc4HyGAAjgOT0tvO1HjwOIbTPzRO_Lkiw8CQ/pub?output=csv';
+async function loadFromSheetsFixed(){
+  try{
+    const resp = await fetch(SHEETS_CSV_URL, {cache:'no-store'});
+    if(!resp.ok) throw new Error('CSV indirilemedi');
+    const csvText = await resp.text();
+    if (typeof XLSX === 'undefined'){ alert('XLSX kütüphanesi yüklenmemiş görünüyor.'); return; }
+    const wb = XLSX.read(csvText, {type:'string'});
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws,{defval:""});
+    products = rows.map(r=>{
+      const out = {...r};
+      const raw = out.Barkodu ?? out.Barkod ?? out.BarkodNo ?? out['BARKOD'] ?? out['barkod'] ?? '';
+      out.Barkodu = String(typeof raw==='number' ? Math.trunc(raw) : raw).trim();
+      return out;
+    });
+    persistAll(); renderProducts();
+    alert('Sheets’ten veri yüklendi.');
+  }catch(e){
+    console.error(e);
+    alert('Sheets verisi alınamadı. (CSV Web’e yayınla bağlantısını doğrulayın)');
+  }
+}
+
+document.addEventListener('DOMContentLoaded', ()=>{
+  document.getElementById('loadFromSheetsFixedBtn')?.addEventListener('click', loadFromSheetsFixed);
+  document.getElementById('syncBtn')?.addEventListener('click', flushQueue);
+});
+</script>
